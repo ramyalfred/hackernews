@@ -2,6 +2,13 @@ import logo from './logo.svg';
 import './App.css';
 import { Component } from 'react';
 
+
+const DEFAULT_QUERY = 'redux';
+const PATH_BASE = 'https://hn.algolia.com/api/v1';
+const PATH_SEARCH = '/search';
+const PARAM_SEARCH = 'query=';
+const url = '${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}';
+
 const list = [
   {
     title: 'React',
@@ -41,13 +48,18 @@ class App extends Component {
     super(props);
 
     this.state = {
-      list,
-      searchTerm: '',
+      result = null,
+      searchTerm: DEFAULT_QUERY,
     };
 
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
+    
   }
+
+  setSearchTopStories(result){
+    this.setState({result});
+  };
 
   onDismiss(id){
     const updatedList = this.state.list.filter((item) => {
@@ -83,6 +95,11 @@ class App extends Component {
           />
         </div>
     );
+  }
+
+
+  componentDidMount(){
+
   }
 }
 
