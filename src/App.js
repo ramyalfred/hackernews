@@ -7,7 +7,6 @@ const DEFAULT_QUERY = 'redux';
 const PATH_BASE = 'https://hn.algolia.com/api/v1';
 const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
-const url = '${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}';
 
 const list = [
   {
@@ -48,13 +47,13 @@ class App extends Component {
     super(props);
 
     this.state = {
-      result = null,
+      result: null,
       searchTerm: DEFAULT_QUERY,
     };
 
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
-    
+    this.setSearchTopStories = this.setSearchTopStories.bind(this);
   }
 
   setSearchTopStories(result){
@@ -62,14 +61,13 @@ class App extends Component {
   };
 
   onDismiss(id){
-    const updatedList = this.state.list.filter((item) => {
-      return item.objectID !==id;
+    const isNotId = item => item.objectID !== id;
+    const updatedList = this.state.result.hits.filter(isNotId);
+
+    //Override the hits in the result object with the ones in this custom object
+    this.setState({
+        result: {...this.state.result, hits: updatedList},  
     });
-    this.setState(
-      {
-        list:updatedList,
-      }
-    );
   }
 
   onSearchChange(event){
@@ -77,7 +75,11 @@ class App extends Component {
   }
 
   render() {
-    const {list,searchTerm} = this.state;
+    console.log(this.state);
+    const {result,searchTerm} = this.state;
+
+    if(!result){return null;}
+
     return(
         <div className="page">
           <div className='interactions'>
@@ -89,7 +91,7 @@ class App extends Component {
             </Search>
           </div>
           <Table
-            list={list}
+            list={result.hits}
             pattern={searchTerm}
             onDismiss={this.onDismiss}
           />
@@ -99,8 +101,18 @@ class App extends Component {
 
 
   componentDidMount(){
+    const {searchTerm} = this.state;
 
+    //Fetch the URL
+    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+      .then(response => response.json())
+      .then(result => this.setSearchTopStories(result))
+      .catch(error => error);
+
+      console.log(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`);
   }
+
+  
 }
 
 const Search = ({value,onChange,children}) => 
