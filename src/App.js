@@ -1,4 +1,5 @@
 import logo from './logo.svg';
+import loading from './assets/loading.svg'
 import './App.css';
 import { Component } from 'react';
 
@@ -7,6 +8,7 @@ const DEFAULT_QUERY = 'redux';
 const PATH_BASE = 'https://hn.algolia.com/api/v1';
 const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
+const PARAM_PAGE = 'page=';
 
 const list = [
   {
@@ -39,7 +41,7 @@ const smallColumn = {
   width: "10%",
 };
 
-const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
+//const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
 
 class App extends Component {
 
@@ -53,7 +55,9 @@ class App extends Component {
 
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
+    this.onSearchSubmit = this.onSearchSubmit.bind(this);
     this.setSearchTopStories = this.setSearchTopStories.bind(this);
+    this.fetchSearch = this.fetchSearch.bind(this);
   }
 
   setSearchTopStories(result){
@@ -74,11 +78,14 @@ class App extends Component {
     this.setState({searchTerm: event.target.value});
   }
 
-  render() {
-    console.log(this.state);
-    const {result,searchTerm} = this.state;
+  onSearchSubmit(event){
+    event.preventDefault();
+    const{searchTerm} = this.state;
+    this.fetchSearch(searchTerm);
+  };
 
-    if(!result){return null;}
+  render() {
+    const {result,searchTerm} = this.state;
 
     return(
         <div className="page">
@@ -86,49 +93,52 @@ class App extends Component {
             <Search 
               value={searchTerm}
               onChange={this.onSearchChange}
+              onSubmit={this.onSearchSubmit}
             >
               Search
             </Search>
           </div>
+          {result?
           <Table
             list={result.hits}
-            pattern={searchTerm}
             onDismiss={this.onDismiss}
-          />
+          />: <Loading/>}
         </div>
     );
   }
 
-
-  componentDidMount(){
-    const {searchTerm} = this.state;
+  fetchSearch(searchTerm){
 
     //Fetch the URL
-    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}\${page}`)
       .then(response => response.json())
       .then(result => this.setSearchTopStories(result))
       .catch(error => error);
-
-      console.log(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`);
   }
 
-  
+  componentDidMount(){
+    const{searchTerm} = this.state;
+    this.fetchSearch(searchTerm);
+  }
 }
 
-const Search = ({value,onChange,children}) => 
-    <form>
+const Search = ({value,onChange,onSubmit,children}) => 
+    <form onSubmit={onSubmit}>
       {children}
       <input 
         type="text"
         onChange={onChange}
         value={value}
       />
+      <button type='submit'>
+          {children}
+        </button>
     </form>
 
 
-const Table = ({list,pattern,onDismiss}) =>
+const Table = ({list,onDismiss}) =>
   <div className='table'>
-  {list.filter(isSearched(pattern)).map(item => 
+  {list.map(item => 
     <div key={item.objectID} className='table-row'>
       <span style={largeColumn}>
         <a href={item.url}>{item.title}</a>
@@ -157,5 +167,8 @@ const Button = ({onClick,className='',children}) =>
   >
     {children}
   </button>
+
+const Loading = () =>
+<img src={loading} alt='loading...'/>
 
 export default App;
