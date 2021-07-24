@@ -5,10 +5,13 @@ import { Component } from 'react';
 
 
 const DEFAULT_QUERY = 'redux';
+const DEFAULT_HPP = '100';
+
 const PATH_BASE = 'https://hn.algolia.com/api/v1';
 const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
 const PARAM_PAGE = 'page=';
+const PARAM_HPP = 'hitsPerPage=';
 
 const list = [
   {
@@ -61,7 +64,19 @@ class App extends Component {
   }
 
   setSearchTopStories(result){
-    this.setState({result});
+    //Get the current hits and page number from the result
+    const {hits,page} = result;
+
+    //Store the current search results to be combined on the new
+    const oldHits = page !== 0?
+      this.state.result.hits:
+      [];
+
+    //Combine current hits with previously stored hits
+    const updatedHits = [...oldHits,...hits];
+
+    //Update the result object with the combined hits
+    this.setState({result: {hits: updatedHits,page}});
   };
 
   onDismiss(id){
@@ -86,7 +101,7 @@ class App extends Component {
 
   render() {
     const {result,searchTerm} = this.state;
-
+    const page = (result && result.page) || 0;
     return(
         <div className="page">
           <div className='interactions'>
@@ -103,14 +118,17 @@ class App extends Component {
             list={result.hits}
             onDismiss={this.onDismiss}
           />: <Loading/>}
+          <Button onClick = {() => this.fetchSearch(searchTerm,page+1)}>
+            More
+          </Button>
         </div>
     );
   }
 
-  fetchSearch(searchTerm){
+  fetchSearch(searchTerm,page = 0){
 
     //Fetch the URL
-    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}\${page}`)
+    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
       .then(response => response.json())
       .then(result => this.setSearchTopStories(result))
       .catch(error => error);
