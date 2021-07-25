@@ -2,6 +2,7 @@ import logo from './logo.svg';
 import loading from './assets/loading.svg'
 import './App.css';
 import { Component } from 'react';
+import axios from 'axios';
 
 
 const DEFAULT_QUERY = 'redux';
@@ -47,13 +48,16 @@ const smallColumn = {
 //const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
 
 class App extends Component {
+  _isMounted = false;
 
   constructor(props){
     super(props);
 
     this.state = {
-      result: null,
+      results: null,
+      searchKey: '',
       searchTerm: DEFAULT_QUERY,
+      error: null,
     };
 
     this.onDismiss = this.onDismiss.bind(this);
@@ -63,29 +67,47 @@ class App extends Component {
     this.fetchSearch = this.fetchSearch.bind(this);
   }
 
+  needsToSearchTopStories(searchTerm){
+    return !this.state.results[searchTerm];
+  }
+
   setSearchTopStories(result){
-    //Get the current hits and page number from the result
+    //Get the previous hits and page number from stored result
     const {hits,page} = result;
 
-    //Store the current search results to be combined on the new
-    const oldHits = page !== 0?
-      this.state.result.hits:
-      [];
+    //Get the current results object along with searchkey
+    const {searchKey,results} = this.state;
+
+    //If there is a cached hits list in the results object set it to oldHits
+    const oldHits = results && results[searchKey]?
+      results[searchKey].hits:
+      []
 
     //Combine current hits with previously stored hits
     const updatedHits = [...oldHits,...hits];
 
-    //Update the result object with the combined hits
-    this.setState({result: {hits: updatedHits,page}});
+    //Update the cache with the new results
+    this.setState({
+      results: {
+        ...results,
+        [searchKey]: {hits: updatedHits,page}
+      }
+    });
   };
 
   onDismiss(id){
+    const {searchKey, results} = this.state;
+    const {hits,page} = results[searchKey];
+
     const isNotId = item => item.objectID !== id;
-    const updatedList = this.state.result.hits.filter(isNotId);
+    const updatedList = hits.filter(isNotId);
 
     //Override the hits in the result object with the ones in this custom object
     this.setState({
-        result: {...this.state.result, hits: updatedList},  
+        results: {
+          ...results,
+          [searchKey]: {hits: updatedList},
+        }  
     });
   }
 
@@ -96,12 +118,18 @@ class App extends Component {
   onSearchSubmit(event){
     event.preventDefault();
     const{searchTerm} = this.state;
-    this.fetchSearch(searchTerm);
+    this.setState({searchKey: searchTerm});
+    if(this.needsToSearchTopStories(searchTerm)){
+      this.fetchSearch(searchTerm);
+    };
+    
   };
 
   render() {
-    const {result,searchTerm} = this.state;
-    const page = (result && result.page) || 0;
+    const {results,searchTerm,searchKey,error} = this.state;
+    const page = (results && results[searchKey] && results[searchKey].page) || 0;
+    const list = (results && results[searchKey] && results[searchKey].hits) || [];
+    
     return(
         <div className="page">
           <div className='interactions'>
@@ -113,12 +141,15 @@ class App extends Component {
               Search
             </Search>
           </div>
-          {result?
-          <Table
-            list={result.hits}
-            onDismiss={this.onDismiss}
-          />: <Loading/>}
-          <Button onClick = {() => this.fetchSearch(searchTerm,page+1)}>
+          {error?
+            <div className='interactions'>
+              <p>Something went wrong.</p>
+            </div>
+            :<Table
+              list={list}
+              onDismiss={this.onDismiss}
+            />}
+          <Button onClick = {() => this.fetchSearch(searchKey,page+1)}>
             More
           </Button>
         </div>
@@ -127,16 +158,22 @@ class App extends Component {
 
   fetchSearch(searchTerm,page = 0){
 
-    //Fetch the URL
-    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
-      .then(response => response.json())
-      .then(result => this.setSearchTopStories(result))
-      .catch(error => error);
+    //Fetch the URL using axios library
+    axios(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
+      .then(result => this._isMounted && this.setSearchTopStories(result.data))
+      .catch(error => this._isMounted && this.setState({error}));
   }
 
   componentDidMount(){
+    this._isMounted = true;
+
     const{searchTerm} = this.state;
+    this.setState({searchKey: searchTerm});
     this.fetchSearch(searchTerm);
+  }
+
+  componentWillUnmount(){
+    this._isMounted = false;
   }
 }
 
