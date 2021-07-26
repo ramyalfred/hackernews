@@ -227,3 +227,9 @@ const Loading = () =>
 <img src={loading} alt='loading...'/>
 
 export default App;
+
+export{
+  Button,
+  Search,
+  Table,
+};
