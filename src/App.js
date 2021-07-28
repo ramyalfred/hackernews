@@ -152,12 +152,11 @@ class App extends Component {
               list={list}
               onDismiss={this.onDismiss}
             />}
-          {isLoading
-            ? <Loading/>
-            : <Button 
+            <ButtonWithLoading
+              isLoading = {isLoading}
               onClick = {() => this.fetchSearch(searchKey,page+1)}>
-              More
-            </Button>}
+                More
+            </ButtonWithLoading>
         </div>
     );
   }
@@ -196,17 +195,17 @@ class Search extends Component{
       const {value,onChange,onSubmit,children} = this.props;
       return(
         <form onSubmit={onSubmit}>
-      {children}
-      <input 
-        type="text"
-        onChange={onChange}
-        value={value}
-        ref={(node) => {this.input = node}}
-      />
-      <button type='submit'>
           {children}
-        </button>
-    </form>
+          <input 
+            type="text"
+            onChange={onChange}
+            value={value}
+            ref={(node) => {this.input = node}}
+          />
+          <button type='submit'>
+              {children}
+            </button>
+      </form>
       );
     }
 
@@ -282,6 +281,13 @@ Button.propTypes = {
 
 const Loading = () =>
 <img src={loading} alt='Loading...'/>
+
+const withLoading = (Component) => ({isLoading, ...rest}) => 
+  isLoading
+    ? <Loading />
+    : <Component {...rest}/>
+
+const ButtonWithLoading = withLoading(Button);
 
 export default App;
 
