@@ -58,8 +58,8 @@ class App extends Component {
       searchKey: '',
       searchTerm: DEFAULT_QUERY,
       error: null,
+      isLoading: false,
     };
-
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
     this.onSearchSubmit = this.onSearchSubmit.bind(this);
@@ -86,12 +86,13 @@ class App extends Component {
     //Combine current hits with previously stored hits
     const updatedHits = [...oldHits,...hits];
 
-    //Update the cache with the new results
+    //Update the cache with the new results and stop the Loading indicator
     this.setState({
       results: {
         ...results,
         [searchKey]: {hits: updatedHits,page}
-      }
+      },
+      isLoading: false,
     });
   };
 
@@ -126,7 +127,7 @@ class App extends Component {
   };
 
   render() {
-    const {results,searchTerm,searchKey,error} = this.state;
+    const {results,searchTerm,searchKey,error,isLoading} = this.state;
     const page = (results && results[searchKey] && results[searchKey].page) || 0;
     const list = (results && results[searchKey] && results[searchKey].hits) || [];
     
@@ -149,14 +150,18 @@ class App extends Component {
               list={list}
               onDismiss={this.onDismiss}
             />}
-          <Button onClick = {() => this.fetchSearch(searchKey,page+1)}>
-            More
-          </Button>
+            <ButtonWithLoading
+              isLoading = {isLoading}
+              onClick = {() => this.fetchSearch(searchKey,page+1)}>
+                More
+            </ButtonWithLoading>
         </div>
     );
   }
 
   fetchSearch(searchTerm,page = 0){
+    //Start loading indicator as the page loads
+    this.setState({isLoading: true});
 
     //Fetch the URL using axios library
     axios(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
@@ -177,19 +182,44 @@ class App extends Component {
   }
 }
 
-const Search = ({value,onChange,onSubmit,children}) => 
-    <form onSubmit={onSubmit}>
-      {children}
-      <input 
-        type="text"
-        onChange={onChange}
-        value={value}
-      />
-      <button type='submit'>
-          {children}
-        </button>
-    </form>
+//Refractor Search into an ES6 class component
+class Search extends Component{
 
+  constructor(props){
+    super(props);
+  }
+
+    render(){
+      const {value,onChange,onSubmit,children} = this.props;
+      return(
+        <form onSubmit={onSubmit}>
+          {children}
+          <input 
+            type="text"
+            onChange={onChange}
+            value={value}
+            ref={(node) => {this.input = node}}
+          />
+          <button type='submit'>
+              {children}
+            </button>
+      </form>
+      );
+    }
+
+    componentDidMount(){
+      if(this.input){
+        this.input.focus();
+      }
+    }
+}
+
+Search.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+}
 
 const Table = ({list,onDismiss}) =>
   <div className='table'>
@@ -213,11 +243,20 @@ const Table = ({list,onDismiss}) =>
   )}
   </div>
 
+// Defining types for Table props
 Table.propTypes = {
-  list: PropTypes.array.isRequired,
-  onDismiss: PropTypes.func.isRequired,
-};
-
+  //Defining list in details
+  list: PropTypes.arrayOf(
+    PropTypes.shape({
+      objectID: PropTypes.string.isRequired,
+      author: PropTypes.string,
+      url: PropTypes.string,
+      num_comments: PropTypes.number,
+      points: PropTypes.number,
+    })    
+  ).isRequired,
+  onDismiss: PropTypes.func.isRequired
+}
 
 const Button = ({onClick,className='',children}) =>
   <button
@@ -228,14 +267,25 @@ const Button = ({onClick,className='',children}) =>
     {children}
   </button>
 
+Button.defaultProps = {
+  className: '',
+};
+
 Button.propTypes = {
-  OnClick: PropTypes.func.isRequired,
+  onClick: PropTypes.func.isRequired,
   className: PropTypes.string,
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node.isRequired
 };
 
 const Loading = () =>
-<img src={loading} alt='loading...'/>
+<img src={loading} alt='Loading...'/>
+
+const withLoading = (Component) => ({isLoading, ...rest}) => 
+  isLoading
+    ? <Loading />
+    : <Component {...rest}/>
+
+const ButtonWithLoading = withLoading(Button);
 
 export default App;
 
