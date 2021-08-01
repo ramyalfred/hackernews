@@ -3,7 +3,9 @@ import loading from './assets/loading.svg'
 import './App.css';
 import { Component } from 'react';
 import axios from 'axios';
+import {sortBy} from 'lodash';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 
 const DEFAULT_QUERY = 'redux';
 const DEFAULT_HPP = '100';
@@ -45,6 +47,15 @@ const smallColumn = {
   width: "10%",
 };
 
+//Sort functions for each defined column
+const SORTS = {
+  NONE: list => list,
+  TITLE: list => sortBy(list, 'title'),
+  AUTHOR: list => sortBy(list, 'author'),
+  COMMENTS: list => sortBy(list, 'num_comments').reverse(),
+  POINTS: list => sortBy(list, 'points').reverse(),
+}
+
 //const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
 
 class App extends Component {
@@ -59,12 +70,22 @@ class App extends Component {
       searchTerm: DEFAULT_QUERY,
       error: null,
       isLoading: false,
+      sortKey: 'NONE',
+      isSortReverse: false,
     };
+
+    // Binding methods to the class instance
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
     this.onSearchSubmit = this.onSearchSubmit.bind(this);
     this.setSearchTopStories = this.setSearchTopStories.bind(this);
     this.fetchSearch = this.fetchSearch.bind(this);
+    this.onSort = this.onSort.bind(this);
+  }
+
+  onSort(sortKey){
+    const isSortReverse = this.state.sortKey === sortKey && !this.state.isSortReverse;
+    this.setState({sortKey, isSortReverse});
   }
 
   needsToSearchTopStories(searchTerm){
@@ -127,7 +148,7 @@ class App extends Component {
   };
 
   render() {
-    const {results,searchTerm,searchKey,error,isLoading} = this.state;
+    const {results,searchTerm,searchKey,error,isLoading,sortKey,isSortReverse} = this.state;
     const page = (results && results[searchKey] && results[searchKey].page) || 0;
     const list = (results && results[searchKey] && results[searchKey].hits) || [];
     
@@ -148,6 +169,9 @@ class App extends Component {
             </div>
             :<Table
               list={list}
+              sortKey={sortKey}
+              onSort={this.onSort}
+              isSortReverse={isSortReverse}
               onDismiss={this.onDismiss}
             />}
             <ButtonWithLoading
@@ -221,9 +245,76 @@ Search.propTypes = {
   children: PropTypes.node.isRequired,
 }
 
-const Table = ({list,onDismiss}) =>
+const Sort = ({sortKey,onSort,activeSortKey,children}) => {
+
+  const sortClass = classNames(
+    'button-inline',
+    {'button-active': sortKey == activeSortKey}
+  );
+
+  return(
+    <Button 
+      className={sortClass}
+      onClick={() => onSort(sortKey)}
+    >
+      {children}
+    </Button>
+  );
+
+} 
+
+
+const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
+  
+  const sortedList = SORTS[sortKey](list);
+  const renderedList = isSortReverse
+    ? sortedList.reverse()
+    : sortedList;
+
+  return(
   <div className='table'>
-  {list.map(item => 
+    <div className='table-header'>
+      <span style={{width: '40%'}}>
+        <Sort
+          sortKey={'TITLE'}
+          onSort={onSort}
+          activeSortKey={sortKey}
+        >
+          Title
+        </Sort>
+      </span>
+      <span style={{width: '30%'}}>
+        <Sort
+          sortKey={'AUTHOR'}
+          onSort={onSort}
+          activeSortKey={sortKey}
+        >
+          Author
+        </Sort>
+      </span>
+      <span style={{width: '10%'}}>
+        <Sort
+          sortKey={'COMMENTS'}
+          onSort={onSort}
+          activeSortKey={sortKey}
+        >
+          Comments
+        </Sort>
+      </span>
+      <span style={{width: '10%'}}>
+        <Sort
+          sortKey={'POINTS'}
+          onSort={onSort}
+          activeSortKey={sortKey}
+        >
+          Points
+        </Sort>
+      </span>
+      <span style={{width: '10%'}}>
+        Archive
+      </span>
+    </div>
+  {renderedList.map(item => 
     <div key={item.objectID} className='table-row'>
       <span style={largeColumn}>
         <a href={item.url}>{item.title}</a>
@@ -242,7 +333,8 @@ const Table = ({list,onDismiss}) =>
     </div>  
   )}
   </div>
-
+  );
+}
 // Defining types for Table props
 Table.propTypes = {
   //Defining list in details
