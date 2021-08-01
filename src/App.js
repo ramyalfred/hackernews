@@ -3,7 +3,7 @@ import loading from './assets/loading.svg'
 import './App.css';
 import { Component } from 'react';
 import axios from 'axios';
-
+import PropTypes from 'prop-types';
 
 const DEFAULT_QUERY = 'redux';
 const DEFAULT_HPP = '100';
@@ -213,6 +213,11 @@ const Table = ({list,onDismiss}) =>
   )}
   </div>
 
+Table.propTypes = {
+  list: PropTypes.array.isRequired,
+  onDismiss: PropTypes.func.isRequired,
+};
+
 
 const Button = ({onClick,className='',children}) =>
   <button
@@ -222,6 +227,12 @@ const Button = ({onClick,className='',children}) =>
   >
     {children}
   </button>
+
+Button.propTypes = {
+  OnClick: PropTypes.func.isRequired,
+  className: PropTypes.string,
+  children: PropTypes.node.isRequired,
+};
 
 const Loading = () =>
 <img src={loading} alt='loading...'/>
