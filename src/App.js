@@ -70,8 +70,6 @@ class App extends Component {
       searchTerm: DEFAULT_QUERY,
       error: null,
       isLoading: false,
-      sortKey: 'NONE',
-      isSortReverse: false,
     };
 
     // Binding methods to the class instance
@@ -80,42 +78,41 @@ class App extends Component {
     this.onSearchSubmit = this.onSearchSubmit.bind(this);
     this.setSearchTopStories = this.setSearchTopStories.bind(this);
     this.fetchSearch = this.fetchSearch.bind(this);
-    this.onSort = this.onSort.bind(this);
-  }
-
-  onSort(sortKey){
-    const isSortReverse = this.state.sortKey === sortKey && !this.state.isSortReverse;
-    this.setState({sortKey, isSortReverse});
   }
 
   needsToSearchTopStories(searchTerm){
     return !this.state.results[searchTerm];
   }
+    
 
   setSearchTopStories(result){
+
     //Get the previous hits and page number from stored result
     const {hits,page} = result;
 
-    //Get the current results object along with searchkey
-    const {searchKey,results} = this.state;
+    this.setState((prevState) => {
+      //Get the current results object along with searchkey
+      const {searchKey,results} = prevState;
 
-    //If there is a cached hits list in the results object set it to oldHits
-    const oldHits = results && results[searchKey]?
-      results[searchKey].hits:
-      []
+      //If there is a cached hits list in the results object set it to oldHits
+      const oldHits = results && results[searchKey]
+        ? results[searchKey].hits
+        : []
 
-    //Combine current hits with previously stored hits
-    const updatedHits = [...oldHits,...hits];
+      //Combine current hits with previously stored hits
+      const updatedHits = [...oldHits,...hits];
 
-    //Update the cache with the new results and stop the Loading indicator
-    this.setState({
-      results: {
-        ...results,
-        [searchKey]: {hits: updatedHits,page}
-      },
-      isLoading: false,
+      //Update the cache with the new results and stop the Loading indicator
+      return{
+        results: {
+          ...results,
+          [searchKey]: {hits: updatedHits,page}
+        },
+        isLoading: false,
+      };
     });
-  };
+
+  }
 
   onDismiss(id){
     const {searchKey, results} = this.state;
@@ -169,9 +166,6 @@ class App extends Component {
             </div>
             :<Table
               list={list}
-              sortKey={sortKey}
-              onSort={this.onSort}
-              isSortReverse={isSortReverse}
               onDismiss={this.onDismiss}
             />}
             <ButtonWithLoading
@@ -263,21 +257,40 @@ const Sort = ({sortKey,onSort,activeSortKey,children}) => {
 
 } 
 
+class Table extends Component{
 
-const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
-  
-  const sortedList = SORTS[sortKey](list);
-  const renderedList = isSortReverse
-    ? sortedList.reverse()
-    : sortedList;
+  constructor(props){
+    super(props);
 
-  return(
-  <div className='table'>
+    this.state={
+      sortKey: 'NONE',
+      isSortReverse: false,
+    };
+
+    this.onSort = this.onSort.bind(this);
+  }
+
+  onSort(sortKey){
+    const isSortReverse = this.state.sortKey === sortKey && !this.state.isSortReverse;
+    this.setState({sortKey, isSortReverse});
+  }
+
+  render(){
+    const {list,onDismiss} = this.props;
+    const {sortKey,isSortReverse} = this.state;
+    const sortedList = SORTS[sortKey](list);
+    const renderedList = isSortReverse
+      ? sortedList.reverse()
+      : sortedList;
+
+
+    return(
+      <div className='table'>
     <div className='table-header'>
       <span style={{width: '40%'}}>
         <Sort
           sortKey={'TITLE'}
-          onSort={onSort}
+          onSort={this.onSort}
           activeSortKey={sortKey}
         >
           Title
@@ -286,7 +299,7 @@ const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
       <span style={{width: '30%'}}>
         <Sort
           sortKey={'AUTHOR'}
-          onSort={onSort}
+          onSort={this.onSort}
           activeSortKey={sortKey}
         >
           Author
@@ -295,7 +308,7 @@ const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
       <span style={{width: '10%'}}>
         <Sort
           sortKey={'COMMENTS'}
-          onSort={onSort}
+          onSort={this.onSort}
           activeSortKey={sortKey}
         >
           Comments
@@ -304,7 +317,7 @@ const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
       <span style={{width: '10%'}}>
         <Sort
           sortKey={'POINTS'}
-          onSort={onSort}
+          onSort={this.onSort}
           activeSortKey={sortKey}
         >
           Points
@@ -333,8 +346,10 @@ const Table = ({list,onDismiss,sortKey,onSort,isSortReverse}) => {
     </div>  
   )}
   </div>
-  );
+    );
+  };
 }
+
 // Defining types for Table props
 Table.propTypes = {
   //Defining list in details
